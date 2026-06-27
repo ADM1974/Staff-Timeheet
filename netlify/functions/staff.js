@@ -127,9 +127,10 @@ async function getAllowancesBySite(token, sitesMap) {
     const siteName = f.SiteLookupId != null ? sitesMap.byId[String(f.SiteLookupId)] : '';
     const title = String(f.Title || '').trim();
     if (!siteName || !title) continue;
-    (out[siteName] = out[siteName] || []).push(title);
+    const bucket = (out[siteName] = out[siteName] || { daily: [], weekly: [] });
+    (String(f.Frequency || 'Daily').trim().toLowerCase() === 'weekly' ? bucket.weekly : bucket.daily).push(title);
   }
-  for (const k in out) out[k].sort((a, b) => a.localeCompare(b));
+  for (const k in out) { out[k].daily.sort((a, b) => a.localeCompare(b)); out[k].weekly.sort((a, b) => a.localeCompare(b)); }
   return out;
 }
 

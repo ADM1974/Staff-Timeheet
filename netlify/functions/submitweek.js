@@ -22,6 +22,7 @@ exports.handler = async (event) => {
     const open = new Set(wk.days);
     const activeSites = new Set(await getActiveSites(token));
     const allowancesBySite = await getAllowancesBySite(token, sitesMap);
+    const weeklySet = new Set(((allowancesBySite[homeSite] || {}).weekly) || []);
 
     const clean = [];
     for (const day of (Array.isArray(data.days) ? data.days : [])) {
@@ -33,13 +34,16 @@ exports.handler = async (event) => {
       const lines = (Array.isArray(day.lines) ? day.lines : [])
         .map(l => ({ wo: String(l.wo || '').trim().slice(0, 200), hr: parseFloat(l.hr) }))
         .filter(l => l.wo && l.hr > 0 && l.hr <= 24);
-      const allowOpts = new Set(allowancesBySite[site] || []);
+      const dailyOpts = new Set(((allowancesBySite[site] || {}).daily) || []);
       const allowances = (Array.isArray(day.allowances) ? day.allowances : [])
         .map(a => String(a || '').trim())
-        .filter(a => allowOpts.has(a));           // only valid for the day's site
+        .filter(a => dailyOpts.has(a));           // daily allowances for the day's site
       if (!lines.length && !allowances.length) continue;
       clean.push({ date, site, lines, allowances });
     }
+    const weekAllowances = (Array.isArray(data.weekAllowances) ? data.weekAllowances : [])
+      .map(a => String(a || '').trim())
+      .filter(a => weeklySet.has(a));             // weekly allowances = the home site's
 
     const existing = await getUserEntries(token, user.id, wk.weekStart, wk.weekEnd);
     for (const it of existing) await deleteItem(token, it.id);
@@ -63,6 +67,14 @@ exports.handler = async (event) => {
         });
         created++;
       }
+    }
+    for (const a of weekAllowances) {
+      await createItem(token, {
+        Title: user.name, ContractorId: user.id, EntryDate: wk.weekStart + 'T00:00:00Z',
+        Site: homeSite, RowType: 'Allowance', Allowance: a, Hours: 0, Status: 'Submitted', BatchID: batchId,
+        Notes: 'Staff app weekly allowance · ' + user.email,
+      });
+      created++;
     }
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, created, weekStart: wk.weekStart, weekEnd: wk.weekEnd }) };
   } catch (err) {

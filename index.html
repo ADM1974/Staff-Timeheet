@@ -112,7 +112,7 @@ const WORKORDERS = [
   "WO-10241 — Riverside fitout","WO-10238 — Northgate roof","WO-10255 — Depot electrical",
   "WO-10199 — Harbour maintenance","WO-10260 — Riverside snagging"
 ];
-let msalInstance=null, account=null, WEEK=null, SITES=[], ALLOWANCES_BY_SITE={}, userName='there';
+let msalInstance=null, account=null, WEEK=null, SITES=[], ALLOWANCES_BY_SITE={}, WEEKLY_OPTIONS=[], WEEK_ALLOWANCES=[], userName='there';
 const SCOPES=['openid','profile','email'];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800);}
@@ -170,6 +170,8 @@ async function loadWeek(){
     if(!data.ok) throw new Error('load');
     SITES=data.sites||[];
     ALLOWANCES_BY_SITE=data.allowancesBySite||{};
+    WEEKLY_OPTIONS=data.weeklyOptions||[];
+    WEEK_ALLOWANCES=(data.weekAllowances||[]).slice();
     WEEK={ weekStart:data.weekStart, weekEnd:data.weekEnd, closeDayName:data.closeDayName,
       days:(data.days||[]).map(d=>({ date:d.date, site:d.site||'',
         lines:(d.lines||[]).map(l=>({wo:String(l.wo||''),hr:(l.hr!=null?String(l.hr):'')})),
@@ -196,7 +198,7 @@ function renderWeek(){
     `<div class="sh">Hi ${esc(firstName(userName))} — your timesheet</div>
      <div class="rng">${dayLabel(WEEK.weekStart)} – ${dayLabel(WEEK.weekEnd)}</div>
      <div class="close">Open until ${esc(WEEK.closeDayName)} — re-enter any time to change it.</div>`;
-  document.getElementById('days').innerHTML=WEEK.days.map((d,di)=>{
+  document.getElementById('days').innerHTML=weekAllowHtml()+WEEK.days.map((d,di)=>{
     const tot=d.lines.reduce((s,l)=>s+(parseFloat(l.hr)||0),0).toFixed(1);
     return `<div class="day">
       <div class="dayhd"><span class="dayname">${dayLabel(d.date)}</span><span class="daytot" id="dt${di}">${tot}h</span></div>
@@ -210,14 +212,20 @@ function renderWeek(){
   const cf=document.getElementById('closeFoot'); if(cf) cf.textContent=`This week closes ${WEEK.closeDayName} — change your hours any time until then.`;
   calcWeekTotal();
 }
-function setDaySite(di,site){ WEEK.days[di].site=site; const ok=ALLOWANCES_BY_SITE[site]||[]; WEEK.days[di].allowances=(WEEK.days[di].allowances||[]).filter(a=>ok.includes(a)); renderWeek(); }
+function setDaySite(di,site){ WEEK.days[di].site=site; const ok=(ALLOWANCES_BY_SITE[site]||{}).daily||[]; WEEK.days[di].allowances=(WEEK.days[di].allowances||[]).filter(a=>ok.includes(a)); renderWeek(); }
 function allowHtml(di,d){
-  const opts=ALLOWANCES_BY_SITE[d.site]||[];
+  const opts=(ALLOWANCES_BY_SITE[d.site]||{}).daily||[];
   if(!d.site || !opts.length) return '';
   const chks=opts.map(a=>`<label class="achk"><input type="checkbox" ${d.allowances.includes(a)?'checked':''} onchange="toggleAllow(${di},'${a.replace(/'/g,"\\'")}',this.checked)"> ${esc(a)}</label>`).join('');
   return `<div class="allow"><div class="allow-h">Allowances</div>${chks}</div>`;
 }
 function toggleAllow(di,name,on){ const arr=WEEK.days[di].allowances; const i=arr.indexOf(name); if(on&&i<0)arr.push(name); else if(!on&&i>=0)arr.splice(i,1); }
+function weekAllowHtml(){
+  if(!WEEKLY_OPTIONS.length) return '';
+  const chks=WEEKLY_OPTIONS.map(a=>`<label class="achk"><input type="checkbox" ${WEEK_ALLOWANCES.includes(a)?'checked':''} onchange="toggleWeekAllow('${a.replace(/'/g,"\\'")}',this.checked)"> ${esc(a)}</label>`).join('');
+  return `<div class="day"><div class="allow-h" style="margin-bottom:6px">Weekly allowances</div>${chks}</div>`;
+}
+function toggleWeekAllow(name,on){ const i=WEEK_ALLOWANCES.indexOf(name); if(on&&i<0)WEEK_ALLOWANCES.push(name); else if(!on&&i>=0)WEEK_ALLOWANCES.splice(i,1); }
 function addLine(di){ WEEK.days[di].lines.push({wo:'',hr:''}); renderWeek(); }
 function delLine(di,li){ WEEK.days[di].lines.splice(li,1); renderWeek(); }
 function dayTot(di){ const el=document.getElementById('dt'+di); if(el) el.textContent=WEEK.days[di].lines.reduce((s,l)=>s+(parseFloat(l.hr)||0),0).toFixed(1)+'h'; }
@@ -239,7 +247,7 @@ async function submitWeek(){
     .filter(d=>d.site && (d.lines.length || d.allowances.length));
   const btn=document.getElementById('submit'); btn.disabled=true; btn.textContent='Submitting…';
   try{
-    const res=await api('/.netlify/functions/submitweek',{days});
+    const res=await api('/.netlify/functions/submitweek',{days,weekAllowances:WEEK_ALLOWANCES});
     if(res.status===401){ toast('Please sign in again'); return; }
     const data=await res.json();
     if(!data.ok) throw new Error('save');
@@ -250,7 +258,7 @@ async function submitWeek(){
 }
 
 /* Version badge (shown on every screen) + always-check-for-updates on load */
-const APP_VERSION='3';
+const APP_VERSION='4';
 document.getElementById('verbadge').textContent='v'+APP_VERSION;
 document.getElementById('signinVer').textContent='Version '+APP_VERSION;
 if('serviceWorker' in navigator && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
