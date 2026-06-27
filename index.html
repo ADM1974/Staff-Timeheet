@@ -63,7 +63,7 @@
   .signin .foot{font-size:11px;color:var(--muted);margin-top:14px;}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 28px);background:#1f2329;color:#fff;padding:11px 18px;border-radius:24px;font-size:13.5px;opacity:0;transition:opacity .25s;pointer-events:none;text-align:center;max-width:320px;z-index:30;}
   .toast.show{opacity:.96;}
-  .verbadge{position:fixed;left:8px;bottom:8px;z-index:40;background:rgba(31,35,41,.5);color:#fff;font-size:10px;line-height:1;padding:4px 7px;border-radius:10px;letter-spacing:.3px;pointer-events:none;}
+  .verbadge{position:fixed;left:calc(env(safe-area-inset-left) + 14px);bottom:calc(env(safe-area-inset-bottom) + 14px);z-index:40;background:rgba(31,35,41,.62);color:#fff;font-size:10px;line-height:1;padding:4px 7px;border-radius:10px;letter-spacing:.3px;pointer-events:none;}
   .allow{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);}
   .allow-h{font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
   .achk{display:flex;align-items:center;gap:9px;font-size:14px;padding:6px 0;color:var(--ink);cursor:pointer;}
@@ -173,7 +173,7 @@ async function loadWeek(){
     WEEKLY_OPTIONS=data.weeklyOptions||[];
     WEEK_ALLOWANCES=(data.weekAllowances||[]).slice();
     WEEK={ weekStart:data.weekStart, weekEnd:data.weekEnd, closeDayName:data.closeDayName,
-      days:(data.days||[]).map(d=>({ date:d.date, site:d.site||'',
+      days:(data.days||[]).map(d=>({ date:d.date, site:d.site||data.homeSite||'',
         lines:(d.lines||[]).map(l=>({wo:String(l.wo||''),hr:(l.hr!=null?String(l.hr):'')})),
         allowances:(d.allowances||[]).slice() })) };
     renderWeek();
@@ -258,7 +258,7 @@ async function submitWeek(){
 }
 
 /* Version badge (shown on every screen) + always-check-for-updates on load */
-const APP_VERSION='5';
+const APP_VERSION='6';
 document.getElementById('verbadge').textContent='v'+APP_VERSION;
 document.getElementById('signinVer').textContent='Version '+APP_VERSION;
 if('serviceWorker' in navigator && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
