@@ -204,8 +204,6 @@ function renderWeek(){
     const tot=d.lines.reduce((s,l)=>s+(parseFloat(l.hr)||0),0).toFixed(1);
     return `<div class="day">
       <div class="dayhd"><span class="dayname">${dayLabel(d.date)}</span><span class="daytot" id="dt${di}">${tot}h</span></div>
-      <label>Site</label>
-      <select onchange="setDaySite(${di},this.value)">${siteOptions(d.site)}</select>
       <div id="dl${di}">${d.lines.map((l,li)=>lineHtml(di,li,l)).join('')}</div>
       <button type="button" class="addline" onclick="addLine(${di})">+ add work order</button>
       ${allowHtml(di,d)}
@@ -260,7 +258,7 @@ async function submitWeek(){
 }
 
 /* Version badge (shown on every screen) + always-check-for-updates on load */
-const APP_VERSION='8';
+const APP_VERSION='9';
 document.getElementById('verbadge').textContent='v'+APP_VERSION;
 document.getElementById('signinVer').textContent='Version '+APP_VERSION;
 if('serviceWorker' in navigator && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
