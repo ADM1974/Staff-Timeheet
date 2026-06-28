@@ -38,7 +38,7 @@ exports.handler = async (event) => {
         if (weeklySet.has(a)) { if (!weekAllowances.includes(a)) weekAllowances.push(a); }
         else dd.allowances.push(a);
       } else {
-        dd.lines.push({ wo: String(f.WorkOrder || ''), hr: Number(f.Hours) || 0 });
+        dd.lines.push({ wo: String(f.WorkOrder || ''), hr: Number(f.Hours) || 0, comment: String(f.Comment || '') });
       }
     }
     const days = active.days.map(date => ({

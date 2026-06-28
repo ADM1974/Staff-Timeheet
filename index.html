@@ -175,7 +175,7 @@ async function loadWeek(){
     WEEK={ weekStart:data.weekStart, weekEnd:data.weekEnd, closeDayName:data.closeDayName, homeSite:data.homeSite||'',
       rejected:!!data.rejected, rejectionReason:data.rejectionReason||'',
       days:(data.days||[]).map(d=>({ date:d.date, site:d.site||data.homeSite||'',
-        lines:(d.lines||[]).map(l=>({wo:String(l.wo||''),hr:(l.hr!=null?String(l.hr):'')})),
+        lines:(d.lines||[]).map(l=>({wo:String(l.wo||''),hr:(l.hr!=null?String(l.hr):''),comment:String(l.comment||'')})),
         allowances:(d.allowances||[]).slice() })) };
     renderWeek();
   }catch(e){ document.getElementById('days').innerHTML='<div class="loading">Couldn’t load your week — check signal.</div>'; }
@@ -192,7 +192,10 @@ function lineHtml(di,li,l){
       </div>
       <input class="ghr" type="number" step="0.25" min="0" inputmode="decimal" placeholder="hrs" value="${esc(l.hr)}"
         oninput="WEEK.days[${di}].lines[${li}].hr=this.value;dayTot(${di});calcWeekTotal()">
-    </div></div>`;
+    </div>
+    <input inputmode="text" placeholder="Comment / description (optional)…" value="${esc(l.comment||'')}"
+      oninput="WEEK.days[${di}].lines[${li}].comment=this.value"
+      style="width:100%;box-sizing:border-box;margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;font-family:inherit;"></div>`;
 }
 function renderWeek(){
   const rejectBanner = WEEK.rejected
@@ -230,7 +233,7 @@ function weekAllowHtml(){
   return `<div class="day"><div class="allow-h" style="margin-bottom:6px">Weekly allowances</div>${chks}</div>`;
 }
 function toggleWeekAllow(name,on){ const i=WEEK_ALLOWANCES.indexOf(name); if(on&&i<0)WEEK_ALLOWANCES.push(name); else if(!on&&i>=0)WEEK_ALLOWANCES.splice(i,1); }
-function addLine(di){ WEEK.days[di].lines.push({wo:'',hr:''}); renderWeek(); }
+function addLine(di){ WEEK.days[di].lines.push({wo:'',hr:'',comment:''}); renderWeek(); }
 function delLine(di,li){ WEEK.days[di].lines.splice(li,1); renderWeek(); }
 function dayTot(di){ const el=document.getElementById('dt'+di); if(el) el.textContent=WEEK.days[di].lines.reduce((s,l)=>s+(parseFloat(l.hr)||0),0).toFixed(1)+'h'; }
 function calcWeekTotal(){ let t=0; for(const d of WEEK.days) for(const l of d.lines) t+=parseFloat(l.hr)||0; document.getElementById('weekTotal').textContent=t.toFixed(1)+' h'; }
@@ -246,7 +249,7 @@ function pick(di,li,wo){ WEEK.days[di].lines[li].wo=wo; renderWeek(); }
 
 async function submitWeek(){
   const days=WEEK.days.map(d=>({ date:d.date, site:d.site,
-    lines:d.lines.filter(l=>l.wo.trim()&&parseFloat(l.hr)>0).map(l=>({wo:l.wo.trim(),hr:parseFloat(l.hr)})),
+    lines:d.lines.filter(l=>l.wo.trim()&&parseFloat(l.hr)>0).map(l=>({wo:l.wo.trim(),hr:parseFloat(l.hr),comment:String(l.comment||'').trim().slice(0,500)})),
     allowances:(d.allowances||[]) }))
     .filter(d=>d.site && (d.lines.length || d.allowances.length));
   const btn=document.getElementById('submit'); btn.disabled=true; btn.textContent='Submitting…';
@@ -262,7 +265,7 @@ async function submitWeek(){
 }
 
 /* Version badge (shown on every screen) + always-check-for-updates on load */
-const APP_VERSION='17';
+const APP_VERSION='18';
 document.getElementById('verbadge').textContent='v'+APP_VERSION;
 document.getElementById('signinVer').textContent='Version '+APP_VERSION;
 if('serviceWorker' in navigator && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){

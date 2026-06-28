@@ -35,7 +35,7 @@ exports.handler = async (event) => {
       if (!site) continue;
       if (!activeSites.has(site)) return bad('Unknown or inactive site: ' + site);
       const lines = (Array.isArray(day.lines) ? day.lines : [])
-        .map(l => ({ wo: String(l.wo || '').trim().slice(0, 200), hr: parseFloat(l.hr) }))
+        .map(l => ({ wo: String(l.wo || '').trim().slice(0, 200), hr: parseFloat(l.hr), comment: String(l.comment || '').trim().slice(0, 500) }))
         .filter(l => l.wo && l.hr > 0 && l.hr <= 24);
       const dailyOpts = new Set(((allowancesBySite[site] || {}).daily) || []);
       const allowances = (Array.isArray(day.allowances) ? day.allowances : [])
@@ -55,11 +55,14 @@ exports.handler = async (event) => {
     let created = 0;
     for (const day of clean) {
       for (const l of day.lines) {
-        await createItem(token, {
+        const fields = {
           Title: user.name, ContractorId: user.id, EntryDate: day.date + 'T00:00:00Z',
           Site: day.site, WorkOrder: l.wo, Hours: l.hr, Status: 'Submitted', BatchID: batchId,
           Notes: 'Staff app · ' + user.email,
-        });
+        };
+        if (l.comment) fields.Comment = l.comment;
+        try { await createItem(token, fields); }
+        catch (e) { if (l.comment) { delete fields.Comment; await createItem(token, fields); } else throw e; }   // Comment column may not exist yet
         created++;
       }
       for (const a of day.allowances) {
