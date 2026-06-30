@@ -184,7 +184,13 @@ const _pad = n => String(n).padStart(2, '0');
 const _iso = ms => { const dt = new Date(ms); return `${dt.getUTCFullYear()}-${_pad(dt.getUTCMonth() + 1)}-${_pad(dt.getUTCDate())}`; };
 
 function computeOpenWeek(closeDayIdx) {
-  const { y, m, d, dow } = nzDateInfo();
+  // Stay open until 11:00 NZ the day AFTER the close day (the report-send time), not
+  // midnight — compute the week from a "now" shifted back 11h (= the send hour), so
+  // people can finalise the just-closed week right up to the cut-off.
+  const shifted = new Date(Date.now() - 11 * 3600 * 1000);
+  const s = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(shifted);
+  const [y, m, d] = s.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   const today = Date.UTC(y, m - 1, d);
   const end = today + ((closeDayIdx - dow + 7) % 7) * 86400000;
   const days = [];
